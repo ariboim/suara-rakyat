@@ -1,0 +1,6 @@
+{
+  "name": "Suara Rakyat - Portal Berita Warga",
+  "description": "Portal berita independen berbasis jurnalisme warga. Laporkan fakta terkini di sekitar Anda, lolos kurasi redaksi, dan suarakan aspirasi rakyat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
