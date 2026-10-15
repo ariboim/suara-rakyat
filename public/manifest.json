@@ -1,0 +1,24 @@
+{
+  "name": "Suara Rakyat - Portal Berita Warga",
+  "short_name": "SuaraRakyat",
+  "description": "Portal berita independen berbasis jurnalisme warga. Laporkan fakta terkini di sekitar Anda.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#B91C1C",
+  "theme_color": "#B91C1C",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,7 +1,36 @@
 import React, { useState } from 'react';
-import { X, Calendar, MapPin, User, Eye, ThumbsUp, Lightbulb, HeartHandshake, Share2, MessageSquare, CheckCircle, ShieldCheck, ChevronLeft, ChevronRight, Copy, Check, MessageCircle, Link as LinkIcon, ExternalLink, Home, PenSquare } from 'lucide-react';
+import {
+  X,
+  Calendar,
+  MapPin,
+  User,
+  Eye,
+  ThumbsUp,
+  Lightbulb,
+  HeartHandshake,
+  Share2,
+  MessageSquare,
+  CheckCircle,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Check,
+  MessageCircle,
+  Link as LinkIcon,
+  ExternalLink,
+  Home,
+  PenSquare,
+  Facebook,
+  Twitter,
+  Send,
+  Linkedin,
+  Mail,
+  Globe,
+} from 'lucide-react';
 import { NewsArticle, User as UserType } from '../types';
 import { storageService } from '../services/storageService';
+import { ShareModal } from './ShareModal';
 
 interface ArticleDetailModalProps {
   article: NewsArticle | null;
@@ -141,6 +170,48 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
     const shortUrl = getArticleShortUrl();
     const message = `📢 *[SUARA RAKYAT]*\n\n*${article.title}*\n\n📌 *Kategori:* ${article.category}\n👤 *Sumber:* ${article.reporterName}\n📍 *Lokasi:* ${article.location}\n\n🔗 *Baca Berita Lengkap:* ${shortUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+    handleReaction('bagikan');
+  };
+
+  const shareViaFacebook = () => {
+    const shortUrl = getArticleShortUrl();
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shortUrl)}&quote=${encodeURIComponent(`[SUARA RAKYAT] ${article.title}`)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+    handleReaction('bagikan');
+  };
+
+  const shareViaTwitter = () => {
+    const shortUrl = getArticleShortUrl();
+    const tweetText = `📢 ${article.title}\n\nLaporan warga dari ${article.location} via @SuaraRakyatID #JurnalismeWarga #${article.category.replace(/[\s&]+/g, '')}`;
+    window.open(
+      `https://twitter.com/intent/tweet?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(tweetText)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+    handleReaction('bagikan');
+  };
+
+  const shareViaTelegram = () => {
+    const shortUrl = getArticleShortUrl();
+    const teleText = `📢 *${article.title}*\n\n📌 Kategori: ${article.category}\n📍 Lokasi: ${article.location}\n\nBaca selengkapnya di Suara Rakyat:`;
+    window.open(
+      `https://t.me/share/url?url=${encodeURIComponent(shortUrl)}&text=${encodeURIComponent(teleText)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+    handleReaction('bagikan');
+  };
+
+  const shareViaLinkedIn = () => {
+    const shortUrl = getArticleShortUrl();
+    window.open(
+      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shortUrl)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
     handleReaction('bagikan');
   };
 
@@ -302,19 +373,21 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Tombol Bagikan & Aksi Cepat */}
+              {/* Tombol Bagikan & Aksi Cepat ke Media Sosial */}
               <div className="flex flex-wrap items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => setIsShareModalOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-red-700 hover:bg-red-800 active:scale-95 transition-all shadow-xs cursor-pointer"
                 >
                   <Share2 className="w-3.5 h-3.5" />
-                  <span>Bagikan</span>
+                  <span>Bagikan ke Medsos</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={shareViaWhatsApp}
-                  title="Bagikan ke WhatsApp dengan Link Portal"
+                  title="Bagikan ke WhatsApp"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 active:scale-95 transition-all cursor-pointer shadow-2xs"
                 >
                   <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
@@ -322,6 +395,17 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
                 </button>
 
                 <button
+                  type="button"
+                  onClick={shareViaFacebook}
+                  title="Bagikan ke Facebook"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#1877F2] bg-blue-50 hover:bg-blue-100 border border-blue-200 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                >
+                  <Facebook className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Facebook</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleCopyLink}
                   title="Salin Link Berita Portal ke Clipboard"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 active:scale-95 transition-all cursor-pointer"
@@ -360,45 +444,97 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
             {article.content}
           </div>
 
-          {/* Kotak Khusus: Bagikan Berita ke Publik (WhatsApp & Salin Link Portal) */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 shadow-2xs space-y-3">
+          {/* Kotak Khusus: Bagikan Berita ke Media Sosial & Salin Link Portal */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 border border-emerald-200/90 shadow-2xs space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-red-700 text-white flex items-center justify-center shrink-0 shadow-xs">
                   <Share2 className="w-5 h-5" />
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                    <span>Bagikan Berita Ini</span>
+                    <span>Bagikan Berita Ini ke Media Sosial</span>
                     <span className="text-[10px] uppercase font-bold bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-md">
-                      Tautan Portal Aktif
+                      Tautan Aktif
                     </span>
                   </h4>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Bantu sebarkan suara dan fakta warga ini ke grup WhatsApp, media sosial, atau salin link artikel.
+                    Bantu sebarkan suara dan fakta warga ini ke WhatsApp, Facebook, X, Telegram, LinkedIn, atau salin link artikel.
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={shareViaWhatsApp}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all shadow-xs cursor-pointer"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Bagikan ke WhatsApp</span>
-                </button>
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-red-700 bg-white hover:bg-red-50 border border-red-200 active:scale-95 transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Lihat Semua Opsi Medsos</span>
+              </button>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 active:scale-95 transition-all shadow-xs cursor-pointer"
-                >
-                  {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                  <span>{isCopied ? 'Short Link Disalin!' : 'Salin Short Link'}</span>
-                </button>
-              </div>
+            {/* Direct Social Media Buttons Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
+              {/* WhatsApp */}
+              <button
+                type="button"
+                onClick={shareViaWhatsApp}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all shadow-xs cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>WhatsApp</span>
+              </button>
+
+              {/* Facebook */}
+              <button
+                type="button"
+                onClick={shareViaFacebook}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-[#1877F2] hover:bg-[#0c63d4] active:scale-95 transition-all shadow-xs cursor-pointer"
+              >
+                <Facebook className="w-4 h-4" />
+                <span>Facebook</span>
+              </button>
+
+              {/* Twitter / X */}
+              <button
+                type="button"
+                onClick={shareViaTwitter}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-black active:scale-95 transition-all shadow-xs cursor-pointer"
+              >
+                <Twitter className="w-4 h-4" />
+                <span>X (Twitter)</span>
+              </button>
+
+              {/* Telegram */}
+              <button
+                type="button"
+                onClick={shareViaTelegram}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-[#229ED9] hover:bg-[#1d8bc0] active:scale-95 transition-all shadow-xs cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>Telegram</span>
+              </button>
+
+              {/* LinkedIn */}
+              <button
+                type="button"
+                onClick={shareViaLinkedIn}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-[#0A66C2] hover:bg-[#084e96] active:scale-95 transition-all shadow-xs cursor-pointer"
+              >
+                <Linkedin className="w-4 h-4" />
+                <span>LinkedIn</span>
+              </button>
+
+              {/* Salin Link */}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 active:scale-95 transition-all shadow-xs cursor-pointer"
+              >
+                {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                <span>{isCopied ? 'Tersalin!' : 'Salin Link'}</span>
+              </button>
             </div>
 
             {/* Direct URL preview box */}
@@ -424,7 +560,7 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
             {isCopied && (
               <div className="p-2.5 rounded-xl bg-emerald-100 border border-emerald-300 text-xs font-semibold text-emerald-900 flex items-center gap-2 animate-in fade-in">
                 <Check className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>Short URL artikel berita berhasil disalin ke papan klip! Link ringkas ini mengarah langsung ke portal Suara Rakyat.</span>
+                <span>Short URL artikel berita berhasil disalin ke papan klip! Siap ditempel di Facebook, status WA, Telegram, X, atau bio Instagram.</span>
               </div>
             )}
           </div>
@@ -472,9 +608,10 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   handleReaction('bagikan');
-                  shareViaWhatsApp();
+                  setIsShareModalOpen(true);
                 }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer ${
                   hasReacted['bagikan']
@@ -750,11 +887,20 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white bg-red-700 hover:bg-red-800 transition-all active:scale-95 cursor-pointer shadow-xs"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Bagikan ke Medsos</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={shareViaWhatsApp}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition-all active:scale-95 cursor-pointer shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition-all active:scale-95 cursor-pointer shadow-xs"
                 >
                   <MessageCircle className="w-4 h-4 text-emerald-600" />
-                  <span>Bagikan ke WA</span>
+                  <span>WA</span>
                 </button>
 
                 {onWriteNews && (
@@ -827,118 +973,13 @@ export const ArticleDetailModal: React.FC<ArticleDetailModalProps> = ({
         </div>
       )}
 
-      {/* Share Modal Dialog (Tombol Bagikan ke WhatsApp & Salin Link Portal) */}
-      {isShareModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 overflow-hidden">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                  <Share2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">
-                    Bagikan Berita
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Sebarkan informasi dari warga ke portal publik
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsShareModalOpen(false)}
-                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Article Snippet */}
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex gap-3">
-              <img
-                src={article.imageUrl}
-                alt={article.title}
-                className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-200"
-              />
-              <div className="min-w-0">
-                <span className="text-[10px] uppercase font-bold text-red-700">
-                  {article.category}
-                </span>
-                <h4 className="font-serif font-bold text-slate-900 text-xs leading-snug line-clamp-2">
-                  {article.title}
-                </h4>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Sumber: {article.reporterName} • {article.location}
-                </p>
-              </div>
-            </div>
-
-            {/* Main Action Buttons: WhatsApp & Copy Link */}
-            <div className="space-y-2.5 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  shareViaWhatsApp();
-                  setIsShareModalOpen(false);
-                }}
-                className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-2xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 transition-all shadow-md shadow-emerald-600/20 text-sm cursor-pointer"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span>Bagikan ke Aplikasi WhatsApp</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-2xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-98 transition-all border border-slate-300 text-sm cursor-pointer"
-              >
-                {isCopied ? <Check className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5" />}
-                <span>{isCopied ? 'Short Link Berhasil Disalin!' : 'Salin Short Link Berita'}</span>
-              </button>
-
-              {typeof navigator !== 'undefined' && 'share' in navigator && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleNativeShare();
-                    setIsShareModalOpen(false);
-                  }}
-                  className="w-full py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Gunakan Menu Berbagi Perangkat</span>
-                </button>
-              )}
-            </div>
-
-            {/* Portal Link preview */}
-            <div className="pt-2 border-t border-slate-100">
-              <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                <span className="px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                  SHORT URL
-                </span>
-                <span>Tautan Ringkas Portal Suara Rakyat:</span>
-              </label>
-              <div className="flex items-center gap-1.5 bg-slate-50 p-2 rounded-xl border border-slate-200">
-                <LinkIcon className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
-                <input
-                  type="text"
-                  readOnly
-                  value={getArticleShortUrl()}
-                  className="w-full bg-transparent text-xs text-slate-700 font-mono focus:outline-none select-all"
-                />
-              </div>
-            </div>
-
-            {isCopied && (
-              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs font-semibold text-emerald-900 flex items-center gap-2 animate-in fade-in">
-                <Check className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>Tautan siap dibagikan! Penerima link akan langsung diarahkan ke artikel ini di portal.</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Share Modal Dialog dengan Opsi WhatsApp, Facebook, X, Telegram, LinkedIn, & Salin Link */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        article={article}
+        onShared={() => handleReaction('bagikan')}
+      />
     </div>
   );
 };

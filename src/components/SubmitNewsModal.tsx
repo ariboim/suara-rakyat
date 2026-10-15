@@ -1,5 +1,24 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, Image as ImageIcon, ShieldAlert, CheckCircle2, Lock, Sparkles, MapPin, Calendar, FileText, Send } from 'lucide-react';
+import {
+  X,
+  Upload,
+  Image as ImageIcon,
+  ShieldAlert,
+  CheckCircle2,
+  Lock,
+  Sparkles,
+  MapPin,
+  Calendar,
+  FileText,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  Lightbulb,
+  Check,
+  Plus,
+  Bell,
+  HelpCircle,
+} from 'lucide-react';
 import { NewsArticle, NewsCategory, User } from '../types';
 import { storageService } from '../services/storageService';
 
@@ -13,6 +32,7 @@ interface SubmitNewsModalProps {
 }
 
 const CATEGORIES: Exclude<NewsCategory, 'Semua'>[] = [
+  'Rekomendasi',
   'Infrastruktur & Layanan',
   'Sosial & Budaya',
   'Ekonomi & Pasar',
@@ -23,7 +43,80 @@ const CATEGORIES: Exclude<NewsCategory, 'Semua'>[] = [
   'Cerpen (Cerita Pendek)',
 ];
 
+const PROMPTS_5W1H: Record<
+  'what' | 'who' | 'where' | 'when' | 'why' | 'how',
+  { label: string; en: string; icon: string; question: string; suggestions: string[] }
+> = {
+  what: {
+    label: 'Apa',
+    en: 'What',
+    icon: '📌',
+    question: 'Apa peristiwa atau fakta utama yang terjadi di lokasi?',
+    suggestions: [
+      'Telah terjadi peristiwa [sebutkan kejadian] yang berdampak langsung pada aktivitas warga sekitar.',
+      'Kondisi [fasilitas/infrastruktur jalan/saluran] di wilayah ini mengalami kerusakan parah dan belum tertangani.',
+      'Warga mengeluhkan persoalan [nama permasalahan] yang sudah berlarut-larut tanpa tindak lanjut konkret.',
+    ],
+  },
+  who: {
+    label: 'Siapa',
+    en: 'Who',
+    icon: '👤',
+    question: 'Siapa pihak yang terlibat, terdampak, atau menjadi saksi?',
+    suggestions: [
+      'Pihak yang terdampak langsung dalam kejadian ini antara lain [warga/pedagang/pengendara/petani] setempat.',
+      'Berdasarkan penuturan narasumber di lokasi, Bapak/Ibu [Nama/Inisial] menyampaikan bahwa...',
+      'Petugas gabungan bersama warga sekitar berupaya menangani dampak dari peristiwa tersebut.',
+    ],
+  },
+  where: {
+    label: 'Di Mana',
+    en: 'Where',
+    icon: '📍',
+    question: 'Di mana lokasi persis peristiwa ini terjadi?',
+    suggestions: [
+      'Peristiwa ini berlokasi di [nama jalan/titik lokasi], Kelurahan/Desa [Nama], Kecamatan [Nama].',
+      'Lokasi kejadian berada tepat di ruas jalan penghubung utama yang setiap hari ramai dilalui warga.',
+      'Area terdampak meliputi kawasan permukiman warga di lingkungan RT [...] / RW [...] sekitar lokasi.',
+    ],
+  },
+  when: {
+    label: 'Kapan',
+    en: 'When',
+    icon: '⏰',
+    question: 'Kapan hari, tanggal, atau perkiraan jam peristiwa?',
+    suggestions: [
+      'Peristiwa ini berlangsung pada hari [Hari], [Tanggal] sekitar pukul [Waktu] WIB.',
+      'Kondisi memprihatinkan ini dilaporkan telah berlangsung selama [beberapa hari/minggu] terakhir.',
+      'Kejadian bermula secara tiba-tiba saat warga sedang memulai aktivitas di pagi/siang hari.',
+    ],
+  },
+  why: {
+    label: 'Mengapa',
+    en: 'Why',
+    icon: '❓',
+    question: 'Mengapa atau apa dugaan penyebab peristiwa ini terjadi?',
+    suggestions: [
+      'Penyebab utama kejadian ini diduga kuat akibat [curah hujan tinggi/kerusakan struktur/kelalaian].',
+      'Berdasarkan penuturan saksi mata, pemicu permasalahan ini bermula dari kurangnya perawatan berkala.',
+      'Hal ini terjadi karena belum adanya pembenahan permanen dari dinas atau pihak yang berwenang.',
+    ],
+  },
+  how: {
+    label: 'Bagaimana',
+    en: 'How',
+    icon: '🛠️',
+    question: 'Bagaimana kronologi lengkap jalannya peristiwa & apa harapan warga?',
+    suggestions: [
+      'Kronologi bermula saat [awal mula kejadian], kemudian [perkembangan situasi], hingga puncaknya [kondisi terkini].',
+      'Akibat peristiwa ini, kerugian yang dialami warga mencakup [kerugian fisik/mobilitas warga/ekonomi].',
+      'Warga sangat berharap pihak berwenang segera turun tangan melakukan [tindakan solusi yang diharapkan].',
+    ],
+  },
+};
+
 const SAMPLE_PRESET_IMAGES = [
+  { label: 'Rekomendasi / Pilihan Warga', url: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80' },
   { label: 'Jalan / Infrastruktur', url: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=1200&q=80' },
   { label: 'Banjir / Lingkungan', url: 'https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80' },
   { label: 'Pasar & Pertanian', url: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=1200&q=80' },
@@ -54,6 +147,60 @@ export const SubmitNewsModal: React.FC<SubmitNewsModalProps> = ({
   const [submittedArticle, setSubmittedArticle] = useState<NewsArticle | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 5W+1H helper state for sentence suggestions
+  const [is5W1HOpen, setIs5W1HOpen] = useState(true);
+  const [active5W1HTab, setActive5W1HTab] = useState<'what' | 'who' | 'where' | 'when' | 'why' | 'how'>('what');
+  const [copiedSentence, setCopiedSentence] = useState<string | null>(null);
+
+  const handleInsertSuggestion = (sentence: string) => {
+    setContent((prev) => {
+      const trimmed = prev.trim();
+      if (!trimmed) return sentence;
+      return `${trimmed}\n\n${sentence}`;
+    });
+    setCopiedSentence(sentence);
+    setTimeout(() => setCopiedSentence(null), 2000);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 50);
+  };
+
+  const handleInsertFull5W1HTemplate = () => {
+    const fullTemplate = `[APA YANG TERJADI - WHAT]
+Telah terjadi peristiwa [sebutkan kejadian] di mana ...
+
+[SIAPA YANG TERLIBAT - WHO]
+Pihak yang terlibat dan terdampak langsung antara lain ...
+
+[DI MANA LOKASINYA - WHERE]
+Peristiwa ini berlokasi di [nama jalan/titik lokasi], Kelurahan/Desa [Nama], Kecamatan [Nama].
+
+[KAPAN WAKTUNYA - WHEN]
+Peristiwa berlangsung pada [Hari, Tanggal] sekitar pukul [Waktu] WIB.
+
+[MENGAPA TERJADI - WHY]
+Penyebab utama kejadian ini diduga dipicu oleh ...
+
+[BAGAIMANA KRONOLOGINYA - HOW]
+Kronologi bermula saat [awal mula kejadian], kemudian [perkembangan situasi], dan harapan warga adalah ...`;
+
+    setContent((prev) => {
+      if (!prev.trim()) return fullTemplate;
+      if (
+        window.confirm(
+          'Ganti seluruh teks dengan format template 5W+1H lengkap? Klik OK untuk mengganti, atau Batal untuk menambahkan di akhir teks.'
+        )
+      ) {
+        return fullTemplate;
+      }
+      return `${prev.trim()}\n\n${fullTemplate}`;
+    });
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 50);
+  };
 
   // Sync reporter name if user logs in
   React.useEffect(() => {

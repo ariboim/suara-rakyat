@@ -99,19 +99,43 @@ export const storageService = {
 
   updateArticleStatus(articleId: string, status: 'approved' | 'rejected', notes?: string, adminName: string = 'Admin Redaksi'): NewsArticle[] {
     const articles = this.getArticles();
+    let approvedArticle: NewsArticle | null = null;
     const updated = articles.map((art) => {
       if (art.id === articleId) {
-        return {
+        const item: NewsArticle = {
           ...art,
           status,
           moderationNotes: notes || (status === 'approved' ? 'Laporan telah diverifikasi redaksi dan layak tayang.' : 'Belum memenuhi standar jurnalisme warga.'),
           reviewedBy: adminName,
           reviewedAt: new Date().toISOString(),
         };
+        if (status === 'approved') {
+          approvedArticle = item;
+        }
+        return item;
       }
       return art;
     });
     this.saveArticles(updated);
+
+    // Broadcast notification for newly approved articles
+    if (status === 'approved' && approvedArticle) {
+      try {
+        localStorage.setItem(
+          'suara_rakyat_last_approved_article',
+          JSON.stringify({
+            article: approvedArticle,
+            timestamp: Date.now(),
+          })
+        );
+        window.dispatchEvent(
+          new CustomEvent('article-approved', { detail: approvedArticle })
+        );
+      } catch {
+        // Safe fallback
+      }
+    }
+
     return updated;
   },
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Newspaper, ShieldCheck, Lock, Heart, ArrowUp } from 'lucide-react';
+import { Newspaper, Download, Smartphone, ShieldCheck, Lock, Heart, ArrowUp } from 'lucide-react';
 import { NewsCategory } from '../types';
 
 interface FooterProps {
@@ -18,6 +18,7 @@ export const Footer: React.FC<FooterProps> = ({
   };
 
   const categories: NewsCategory[] = [
+    'Rekomendasi',
     'Infrastruktur & Layanan',
     'Sosial & Budaya',
     'Ekonomi & Pasar',
@@ -38,8 +39,8 @@ export const Footer: React.FC<FooterProps> = ({
               onClick={onGoHome}
               className="flex items-center gap-2 cursor-pointer group"
             >
-              <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white font-bold">
-                <Newspaper className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border-2 border-amber-500/60 shadow-md shadow-red-950/40 bg-gradient-to-br from-red-700 to-red-950 p-0.5">
+                <img src="/favicon.svg" alt="Logo Suara Rakyat" className="w-full h-full object-contain" width="36" height="36" />
               </div>
               <span className="font-editorial font-black text-xl text-white uppercase tracking-wider">
                 SUARA RAKYAT
@@ -56,6 +57,26 @@ export const Footer: React.FC<FooterProps> = ({
                 <span>Tulis Berita Warga</span>
               </button>
             </div>
+          </div>
+
+          {/* Download & Install APK Card */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-amber-400" />
+              <span>Aplikasi Android</span>
+            </h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Pasang aplikasi resmi Suara Rakyat pada ponsel Anda untuk akses berita warga paling cepat dan hemat kuota.
+            </p>
+            <a
+              href="https://www.google.com/url?sa=E&q=https%3A%2F%2Fgithub.com%2Fariboim%2Fsuara-rakyat%2Freleases%2Flatest%2Fdownload%2Fapp-debug.apk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 shadow-md transition-all border border-red-500/50 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-300" />
+              <span>Install APK (app-debug.apk)</span>
+            </a>
           </div>
 
           {/* Kategori Berita */}

@@ -44,17 +44,14 @@ jobs:
 
       - name: Generate Native Android Project
         run: |
-          npm install --legacy-peer-deps @capacitor/core@6.2.0 @capacitor/cli@6.2.0 @capacitor/android@6.2.0
-          cat << 'EOF' > capacitor.config.json
-          {
-            "appId": "com.suararakyat.portal",
-            "appName": "Suara Rakyat",
-            "webDir": "dist"
-          }
-          EOF
-          rm -f capacitor.config.ts capacitor.config.js
-          rm -rf android
+          npm install --legacy-peer-deps @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "Suara Rakyat" "com.suararakyat.portal" --web-dir "dist"
           npx cap add android
+          # Apply official Suara Rakyat app icons & splash for installed APK
+          if [ -d "android-assets/res" ]; then
+            echo "Applying official Suara Rakyat app icons to Android project..."
+            cp -rf android-assets/res/* android/app/src/main/res/
+          fi
 
       - name: Build Android Debug APK
         run: |

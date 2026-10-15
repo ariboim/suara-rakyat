@@ -5,6 +5,9 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
+  Download,
+  Smartphone,
+  ExternalLink,
   Search,
   Filter,
   Sparkles,
@@ -19,6 +22,7 @@ import {
   AlertCircle,
   Flame,
   User as UserIcon,
+  Share2,
 } from 'lucide-react';
 import { NewsArticle, NewsCategory, User, ActiveView } from './types';
 import { storageService } from './services/storageService';
@@ -28,12 +32,19 @@ import { AuthModal } from './components/AuthModal';
 import { SubmitNewsModal } from './components/SubmitNewsModal';
 import { AdminModeration } from './components/AdminModeration';
 import { ArticleDetailModal } from './components/ArticleDetailModal';
+import { ShareModal } from './components/ShareModal';
 import { UserDashboard } from './components/UserDashboard';
 import { CloseAppModal } from './components/CloseAppModal';
 import { Footer } from './components/Footer';
+import {
+  ToastNotificationContainer,
+  ToastNotificationItem,
+  playNotificationChime,
+} from './components/ToastNotification';
 
 const CATEGORIES: NewsCategory[] = [
   'Semua',
+  'Rekomendasi',
   'Infrastruktur & Layanan',
   'Sosial & Budaya',
   'Ekonomi & Pasar',
@@ -65,59 +76,125 @@ export default function App() {
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [isAppClosed, setIsAppClosed] = useState(false);
 
+  // Toast notifications for newly approved articles
+  const [toasts, setToasts] = useState<ToastNotificationItem[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [recentApprovedNotifications, setRecentApprovedNotifications] = useState<NewsArticle[]>([]);
+
+  // Share modal state for quick sharing directly from article cards
+  const [sharingArticle, setSharingArticle] = useState<NewsArticle | null>(null);
+
   // Refresh feedback state
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdatedText, setLastUpdatedText] = useState('Baru saja');
+  const [lastUpdatedText, setLastUpdatedText] = useState('Baru saja (Otomatis)');
 
-  // Load initial data from storage
-  const loadData = useCallback(() => {
-    const loadedArticles = storageService.getArticles();
-    const loadedUser = storageService.getCurrentUser();
-    setArticles(loadedArticles);
-    setCurrentUser(loadedUser);
-  }, []);
+  // Show Toast notification when admin approves an article
+  const showApprovedToast = useCallback(
+    (article: NewsArticle) => {
+      const toastId = `toast-${article.id}-${Date.now()}`;
+      const newToast: ToastNotificationItem = {
+        id: toastId,
+        article,
+        timestamp: Date.now(),
+        duration: 8500,
+      };
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+      setToasts((prev) => [
+        newToast,
+        ...prev.filter((t) => t.article.id !== article.id).slice(0, 2),
+      ]);
 
-  // Deep linking: Automatically open article if URL has ?s=... (short url) or ?articleId=...
-  useEffect(() => {
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const articleIdParam = urlParams.get('articleId');
-      const shortCodeParam = urlParams.get('s') || urlParams.get('b');
-      const hashParam = window.location.hash.replace(/^#\/?/, '').replace(/^s-/, '');
+      setRecentApprovedNotifications((prev) => {
+        const withoutCurrent = prev.filter((a) => a.id !== article.id);
+        return [article, ...withoutCurrent].slice(0, 10);
+      });
 
-      const targetCode = shortCodeParam || articleIdParam || hashParam;
+      setUnreadNotificationsCount((prev) => prev + 1);
 
-      if (targetCode && articles.length > 0) {
-        const found = articles.find(
-          (a) =>
-            a.id === targetCode ||
-            a.id === `art-${targetCode}` ||
-            a.id.replace('art-', '') === targetCode
-        );
-        if (found) {
-          setSelectedArticle(found);
-        }
+      if (soundEnabled) {
+        playNotificationChime();
       }
-    } catch {
-      // safe fallback
-    }
-  }, [articles]);
+    },
+    [soundEnabled]
+  );
 
-  // Refresh handler (as explicitly requested: "Tampilkan tombol refresh pada aplikasi untuk melihat berita terbaru")
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      loadData();
-      setIsRefreshing(false);
+  // Core Automated Refresh handler: loads latest data & triggers toast if new articles were approved by admin
+  const executeAutoRefresh = useCallback(
+    (showSpinner = false) => {
+      if (showSpinner) setIsRefreshing(true);
+      const freshArticles = storageService.getArticles();
+      const freshUser = storageService.getCurrentUser();
+
+      setArticles((prev) => {
+        const prevApprovedIds = new Set(
+          prev.filter((a) => a.status === 'approved').map((a) => a.id)
+        );
+        const newlyApproved = freshArticles.filter(
+          (a) => a.status === 'approved' && !prevApprovedIds.has(a.id)
+        );
+
+        // Notify user with toast if newly approved articles arrived in this session
+        if (newlyApproved.length > 0 && prev.length > 0) {
+          newlyApproved.forEach((art) => {
+            showApprovedToast(art);
+          });
+        }
+
+        return freshArticles;
+      });
+
+      setCurrentUser(freshUser);
       const now = new Date();
       setLastUpdatedText(
-        now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+        now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB (Otomatis)'
       );
-    }, 450);
+
+      if (showSpinner) {
+        setTimeout(() => setIsRefreshing(false), 350);
+      }
+    },
+    [showApprovedToast]
+  );
+
+  const loadData = useCallback(() => {
+    executeAutoRefresh(false);
+  }, [executeAutoRefresh]);
+
+  // Automated refresh when the application is opened (on mount, on window focus, on tab visibility change)
+  useEffect(() => {
+    // 1. Initial automated refresh upon opening the application
+    executeAutoRefresh(false);
+
+    // 2. Automate refresh when tab / app is opened or brought to foreground
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        executeAutoRefresh(false);
+      }
+    };
+
+    const handleFocus = () => {
+      executeAutoRefresh(false);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    // 3. Periodic synchronization every 7 seconds to keep latest approved articles always fresh
+    const syncTimer = setInterval(() => {
+      executeAutoRefresh(false);
+    }, 7000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(syncTimer);
+    };
+  }, [executeAutoRefresh]);
+
+  // Manual refresh button handler
+  const handleRefresh = () => {
+    executeAutoRefresh(true);
   };
 
   // Only approved articles appear in public views
@@ -295,7 +372,34 @@ export default function App() {
     loadData();
   };
 
-  // Moderation Status Update
+  // View article detail
+  const handleSelectArticle = useCallback((article: NewsArticle) => {
+    storageService.incrementViews(article.id);
+    setSelectedArticle({ ...article, views: article.views + 1 });
+    try {
+      const url = new URL(window.location.href);
+      const shortCode = article.id.replace('art-', '');
+      url.searchParams.set('s', shortCode);
+      url.searchParams.delete('articleId');
+      window.history.replaceState({}, '', url.toString());
+    } catch {
+      // safe fallback
+    }
+  }, []);
+
+
+  const handleDismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const handleReadArticleFromToast = useCallback(
+    (article: NewsArticle) => {
+      handleSelectArticle(article);
+    },
+    [handleSelectArticle]
+  );
+
+  // Moderation Status Update (triggers toast when status is approved)
   const handleUpdateArticleStatus = (
     articleId: string,
     status: 'approved' | 'rejected',
@@ -308,22 +412,93 @@ export default function App() {
       currentUser?.name || 'Admin Redaksi'
     );
     setArticles(updated);
-  };
 
-  // View article detail
-  const handleSelectArticle = (article: NewsArticle) => {
-    storageService.incrementViews(article.id);
-    setSelectedArticle({ ...article, views: article.views + 1 });
-    try {
-      const url = new URL(window.location.href);
-      const shortCode = article.id.replace('art-', '');
-      url.searchParams.set('s', shortCode);
-      url.searchParams.delete('articleId');
-      window.history.replaceState({}, '', url.toString());
-    } catch {
-      // safe fallback
+    if (status === 'approved') {
+      const approvedItem = updated.find((a) => a.id === articleId);
+      if (approvedItem) {
+        showApprovedToast(approvedItem);
+      }
     }
   };
+
+  // Simulate an approved article toast for easy testing and evaluation
+  const handleSimulateApprovedToast = useCallback(() => {
+    const pendingArticle = articles.find((a) => a.status === 'pending');
+    if (pendingArticle) {
+      handleUpdateArticleStatus(
+        pendingArticle.id,
+        'approved',
+        'Telah diverifikasi dan disetujui dewan redaksi Suara Rakyat.'
+      );
+    } else {
+      const demoArticle: NewsArticle = {
+        id: `demo-${Date.now()}`,
+        title: 'Pemkot Resmikan Taman Kota Terbuka Hijau Baru Ramah Anak dan Disabilitas',
+        content: 'Taman kota baru seluas 3 hektar kini resmi dibuka untuk warga dengan berbagai fasilitas olahraga, jalur pedestrian ramah kursi roda, serta perpustakaan alam terbuka yang dapat diakses gratis oleh masyarakat.',
+        category: 'Infrastruktur & Layanan',
+        imageUrl: 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=1200&q=80',
+        imageCaption: 'Fasilitas taman ramah disabilitas yang baru saja diresmikan.',
+        reporterName: 'Wulan Andriani (Jurnalis Warga)',
+        whatsappNumber: '081233445566',
+        location: 'Surabaya, Jawa Timur',
+        incidentDate: '2026-10-14',
+        createdAt: new Date().toISOString(),
+        status: 'approved',
+        reviewedBy: 'Admin Redaksi',
+        reviewedAt: new Date().toISOString(),
+        authorId: 'usr-citizen-demo',
+        views: 28,
+        reactions: { setuju: 19, penting: 35, prihatin: 0, bagikan: 12 },
+        comments: [],
+      };
+      const updated = [demoArticle, ...articles];
+      storageService.saveArticles(updated);
+      setArticles(updated);
+      showApprovedToast(demoArticle);
+    }
+  }, [articles, currentUser, showApprovedToast]);
+
+  // Synchronize notifications across tabs and custom events
+  useEffect(() => {
+    const handleArticleApproved = (e: Event) => {
+      const customEvent = e as CustomEvent<NewsArticle>;
+      if (customEvent.detail) {
+        showApprovedToast(customEvent.detail);
+      }
+    };
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'suara_rakyat_last_approved_article' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && parsed.article) {
+            showApprovedToast(parsed.article);
+            loadData();
+          }
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    window.addEventListener('article-approved', handleArticleApproved);
+    window.addEventListener('storage', handleStorageEvent);
+
+    return () => {
+      window.removeEventListener('article-approved', handleArticleApproved);
+      window.removeEventListener('storage', handleStorageEvent);
+    };
+  }, [showApprovedToast, loadData]);
+
+  // Seed recent approved notifications list from loaded articles
+  useEffect(() => {
+    if (articles.length > 0) {
+      setRecentApprovedNotifications((prev) => {
+        if (prev.length > 0) return prev;
+        return articles.filter((a) => a.status === 'approved').slice(0, 6);
+      });
+    }
+  }, [articles]);
 
   const handleCloseArticle = () => {
     setSelectedArticle(null);
@@ -356,6 +531,12 @@ export default function App() {
         onSelectArticle={handleSelectArticle}
         onWriteNews={handleOpenWriteReport}
         onGoHome={handleGoHome}
+        recentApprovedArticles={recentApprovedNotifications}
+        unreadNotificationsCount={unreadNotificationsCount}
+        onClearNotifications={() => setUnreadNotificationsCount(0)}
+        onSimulateApprovedToast={handleSimulateApprovedToast}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled((prev) => !prev)}
       />
 
       {/* 2. Primary Navigation Toolbar (Ke Home, Halaman Sebelumnya, Halaman Berikutnya, Refresh, Tutup Aplikasi) */}
@@ -389,6 +570,7 @@ export default function App() {
             onViewArticleDetail={handleSelectArticle}
             onDataChanged={loadData}
             onWriteNews={handleOpenWriteReport}
+            onSimulateApprovedToast={handleSimulateApprovedToast}
           />
         )}
 
@@ -407,6 +589,64 @@ export default function App() {
         {/* ===================== VIEW: HOME / PORTAL BERITA ===================== */}
         {activeView === 'home' && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+
+            {/* ===================== BANNER INSTALL APLIKASI SUARA RAKYAT (HALAMAN MUKA) ===================== */}
+            <section aria-label="Install Aplikasi Suara Rakyat" className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-red-950 via-slate-900 to-slate-950 p-6 sm:p-8 text-white shadow-xl border-2 border-amber-500/60">
+              {/* Background ambient lighting */}
+              <div className="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-red-600/15 blur-3xl pointer-events-none"></div>
+              <div className="absolute -left-16 -bottom-16 w-80 h-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none"></div>
+
+              <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
+                {/* Logo & Headline */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-400 bg-gradient-to-br from-red-700 to-red-950 p-1 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <img
+                      src="/favicon.svg"
+                      alt="Logo Resmi Suara Rakyat"
+                      className="w-full h-full object-contain"
+                      width="96"
+                      height="96"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 shadow-xs flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5 text-slate-950" />
+                        Aplikasi Android Resmi
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-emerald-400" />
+                        APK Siap Pasang
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono text-slate-400 bg-slate-800/80 border border-slate-700">
+                        app-debug.apk
+                      </span>
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-black font-editorial tracking-tight text-white">
+                      Pasang Aplikasi Suara Rakyat di Smartphone Anda
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
+                      Akses jurnalisme warga tercepat, kirim laporan fakta dari lingkungan Anda secara instan, dan dapatkan notifikasi berita penting terverifikasi langsung di ponsel Anda.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Direct Action Button */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto shrink-0">
+                  <a
+                    href="https://www.google.com/url?sa=E&q=https%3A%2F%2Fgithub.com%2Fariboim%2Fsuara-rakyat%2Freleases%2Flatest%2Fdownload%2Fapp-debug.apk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Klik untuk mengunduh dan install langsung aplikasi Suara Rakyat"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-6 py-4 rounded-2xl text-base font-black text-white bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 active:scale-95 transition-all shadow-xl shadow-red-700/40 hover:shadow-2xl border-2 border-amber-400/90 cursor-pointer group"
+                  >
+                    <Download className="w-5 h-5 text-amber-300 animate-bounce group-hover:scale-110 transition-transform" />
+                    <span>Install Aplikasi (Unduh APK)</span>
+                    <ExternalLink className="w-4 h-4 text-white/80" />
+                  </a>
+                </div>
+              </div>
+            </section>
             {/* Admin Desk notification banner if pending items exist */}
             {currentUser?.role === 'admin' && pendingCount > 0 && (
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
@@ -498,13 +738,28 @@ export default function App() {
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => handleSelectArticle(headlineArticle)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-700 hover:bg-red-800 transition-colors shadow-xs"
-                      >
-                        <span>Baca Lengkap</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSharingArticle(headlineArticle);
+                          }}
+                          title="Bagikan berita utama ke WhatsApp, Facebook, X, Telegram, LinkedIn, dll."
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Bagikan Medsos</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleSelectArticle(headlineArticle)}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-700 hover:bg-red-800 transition-colors shadow-xs"
+                        >
+                          <span>Baca Lengkap</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -518,7 +773,7 @@ export default function App() {
                 <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">
                     <Filter className="w-3.5 h-3.5" />
-                    <span>Kategori:</span>
+                    <span>Rubrik:</span>
                   </div>
                   {CATEGORIES.map((cat) => {
                     const isSelected = selectedCategory === cat;
@@ -526,12 +781,21 @@ export default function App() {
                       <button
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                           isSelected
                             ? 'bg-red-700 text-white shadow-xs'
+                            : cat === 'Rekomendasi'
+                            ? 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
                       >
+                        {cat === 'Rekomendasi' && (
+                          <Sparkles
+                            className={`w-3.5 h-3.5 ${
+                              isSelected ? 'text-amber-300 fill-amber-300' : 'text-amber-600 fill-amber-500'
+                            }`}
+                          />
+                        )}
                         {cat}
                       </button>
                     );
@@ -627,7 +891,14 @@ export default function App() {
                             alt={article.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
-                          <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-900/80 backdrop-blur-xs text-white">
+                          <span
+                            className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider backdrop-blur-xs text-white ${
+                              article.category === 'Rekomendasi'
+                                ? 'bg-amber-600/95 border border-amber-300/40 shadow-xs'
+                                : 'bg-slate-900/80'
+                            }`}
+                          >
+                            {article.category === 'Rekomendasi' && '⭐ '}
                             {article.category}
                           </span>
                           <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600/90 text-white flex items-center gap-1 shadow-xs">
@@ -671,8 +942,20 @@ export default function App() {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0 text-slate-600">
-                          <span className="flex items-center gap-1 text-[11px]">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSharingArticle(article);
+                            }}
+                            title="Bagikan berita ke WhatsApp, Facebook, X, Telegram, dll."
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200 transition-colors cursor-pointer"
+                          >
+                            <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Bagikan</span>
+                          </button>
+                          <span className="flex items-center gap-1 text-[11px] text-slate-500 pl-0.5">
                             <Eye className="w-3.5 h-3.5" />
                             {article.views}
                           </span>
@@ -818,7 +1101,19 @@ export default function App() {
         onReopenApp={handleReopenApp}
       />
 
-      {/* 8. Editorial Footer */}
+      {/* 8. Global Share Modal for Quick Sharing to Social Media */}
+      <ShareModal
+        isOpen={!!sharingArticle}
+        onClose={() => setSharingArticle(null)}
+        article={sharingArticle}
+        onShared={() => {
+          if (sharingArticle) {
+            storageService.addReaction(sharingArticle.id, 'bagikan');
+          }
+        }}
+      />
+
+      {/* 9. Editorial Footer */}
       <Footer
         onSelectCategory={(cat) => {
           handleGoHome();
@@ -826,6 +1121,15 @@ export default function App() {
         }}
         onGoHome={handleGoHome}
         onOpenReportModal={handleOpenWriteReport}
+      />
+
+      {/* 10. Toast Notification System for Newly Approved Articles */}
+      <ToastNotificationContainer
+        toasts={toasts}
+        onDismiss={handleDismissToast}
+        onReadArticle={handleReadArticleFromToast}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled((prev) => !prev)}
       />
     </div>
   );

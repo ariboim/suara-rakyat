@@ -19,6 +19,7 @@ import {
   Flag,
   Home,
   PenSquare,
+  Bell,
 } from 'lucide-react';
 import { NewsArticle, ModerationStatus, User as UserType } from '../types';
 import { storageService } from '../services/storageService';
@@ -31,6 +32,7 @@ interface AdminModerationProps {
   onViewArticleDetail: (article: NewsArticle) => void;
   onDataChanged?: () => void;
   onWriteNews?: () => void;
+  onSimulateApprovedToast?: () => void;
 }
 
 export const AdminModeration: React.FC<AdminModerationProps> = ({
@@ -41,6 +43,7 @@ export const AdminModeration: React.FC<AdminModerationProps> = ({
   onViewArticleDetail,
   onDataChanged,
   onWriteNews,
+  onSimulateApprovedToast,
 }) => {
   // Main admin view mode: 'articles' or 'comments'
   const [activeAdminTab, setActiveAdminTab] = useState<'articles' | 'comments'>('articles');
@@ -189,6 +192,18 @@ export const AdminModeration: React.FC<AdminModerationProps> = ({
               <Home className="w-4 h-4 text-amber-300" />
               <span>Halaman Depan (Home)</span>
             </button>
+
+            {onSimulateApprovedToast && (
+              <button
+                type="button"
+                onClick={onSimulateApprovedToast}
+                title="Uji Coba Toast Notifikasi Artikel Disetujui"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition-all border border-emerald-400 active:scale-95 cursor-pointer shadow-md"
+              >
+                <Bell className="w-4 h-4 text-emerald-200" />
+                <span>Uji Toast Notifikasi</span>
+              </button>
+            )}
 
             {onWriteNews && (
               <button

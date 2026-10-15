@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ChevronLeft, ChevronRight, RotateCcw, Power, PenSquare, ShieldCheck } from 'lucide-react';
+import { Home, Download, ChevronLeft, ChevronRight, RotateCcw, Power, PenSquare, ShieldCheck } from 'lucide-react';
 import { User } from '../types';
 
 interface NavigationToolbarProps {
@@ -43,6 +43,18 @@ export const NavigationToolbar: React.FC<NavigationToolbarProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Main Action Navigation Buttons required by user */}
           <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+            {/* Quick Install APK Link */}
+            <a
+              href="https://www.google.com/url?sa=E&q=https%3A%2F%2Fgithub.com%2Fariboim%2Fsuara-rakyat%2Freleases%2Flatest%2Fdownload%2Fapp-debug.apk"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Install Aplikasi Suara Rakyat (Unduh app-debug.apk Langsung)"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer border border-emerald-300 shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-emerald-600 animate-pulse" />
+              <span>Install App</span>
+            </a>
+
             {/* Ke Home */}
             <button
               type="button"
@@ -95,13 +107,22 @@ export const NavigationToolbar: React.FC<NavigationToolbarProps> = ({
             {/* Refresh Berita */}
             <button
               onClick={onRefresh}
-              title="Refresh / Muat Ulang Berita Terbaru"
+              title="Refresh / Muat Ulang Berita Terbaru (Portal juga otomatis refresh saat dibuka)"
               disabled={isRefreshing}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer border border-emerald-200"
             >
               <RotateCcw className={`w-4 h-4 text-emerald-600 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
+
+            {/* Auto-Refresh Status Indicator */}
+            <span
+              title="Otomatisasi refresh aktif: memuat artikel terbaru yang disetujui admin setiap kali aplikasi dibuka atau difokuskan"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50/80 rounded-lg border border-emerald-200"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Auto-Refresh On</span>
+            </span>
           </div>
 
           {/* Right section: Tulis Berita CTA + Admin Link + Tutup Aplikasi */}

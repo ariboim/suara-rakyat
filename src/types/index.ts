@@ -14,6 +14,7 @@ export interface User {
 
 export type NewsCategory =
   | 'Semua'
+  | 'Rekomendasi'
   | 'Infrastruktur & Layanan'
   | 'Sosial & Budaya'
   | 'Ekonomi & Pasar'

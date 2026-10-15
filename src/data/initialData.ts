@@ -254,4 +254,44 @@ Ada kehangatan yang tak bisa ditakar oleh materi di tanah ini—kehangatan yang 
       },
     ],
   },
+  {
+    id: 'art-008',
+    title: 'Rekomendasi Inisiatif Bank Sampah Mandiri Warga RW 05: Ubah Limbah Plastik Menjadi Tabungan Emas dan Beasiswa Anak',
+    content: `Program inovasi pengelolaan sampah berbasis komunitas warga di RW 05 patut menjadi rekomendasi dan percontohan inspiratif bagi pemukiman lain di seluruh tanah air. Berawal dari keprihatinan atas menumpuknya sampah rumah tangga pasca-banjir tahun lalu, warga bergotong royong mendirikan bank sampah mandiri secara swadaya.
+
+Sampah anorganik bernilai ekonomis disetorkan warga setiap akhir pekan, kemudian dikonversikan menjadi saldo tabungan emas serta kas bantuan pendidikan bagi anak-anak keluarga prasejahtera. Sementara sampah organik diproses menjadi kompos dan budidaya maggot pakan ternak.
+
+"Awalnya kami ragu warga mau memilah sampah dari dapur. Namun dengan edukasi rutin dan transparansi pencatatan digital kas RW, antusiasme warga kini mencapai lebih dari 95 persen. Lingkungan jadi asri, dan warga mendapat manfaat finansial nyata," ungkap Ibu Hartini, koordinator inisiatif lingkungan warga.
+
+Redaksi Suara Rakyat merekomendasikan gerakan akar rumput ini untuk diadopsi oleh dinas lingkungan hidup dan perangkat desa sebagai solusi nyata penanganan sampah perkotaan yang berkelanjutan.`,
+    category: 'Rekomendasi',
+    imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=1200&q=80',
+    imageCaption: 'Aktivitas pemilahan dan penimbangan sampah bernilai ekonomi oleh para pengurus bank sampah mandiri warga.',
+    reporterName: 'Hartini Wulandari (Kader Lingkungan RW 05)',
+    whatsappNumber: '081288776655',
+    location: 'Jakarta Timur, DKI Jakarta',
+    incidentDate: '2026-10-15',
+    createdAt: '2026-10-15T08:30:00Z',
+    status: 'approved',
+    reviewedBy: 'Admin Redaksi',
+    reviewedAt: '2026-10-15T09:00:00Z',
+    authorId: 'usr-citizen-1',
+    views: 890,
+    reactions: { setuju: 245, penting: 310, prihatin: 18, bagikan: 112 },
+    comments: [
+      {
+        id: 'c-rec-1',
+        articleId: 'art-008',
+        authorName: 'Bambang Sudirgo',
+        authorEmail: 'bambang.s@gmail.com',
+        authorAvatar: 'https://api.dicebear.com/7.x/initials/svg?seed=Bambang+Sudirgo&backgroundColor=0284c7',
+        authorRole: 'citizen',
+        content: 'Sangat menginspirasi! Rubrik rekomendasi seperti ini sangat bermanfaat memberikan solusi nyata yang bisa langsung dipraktekkan di lingkungan RT/RW kami.',
+        createdAt: '2026-10-15T09:45:00Z',
+        likes: 19,
+        reportsCount: 0,
+        isReported: false,
+      },
+    ],
+  },
 ];
