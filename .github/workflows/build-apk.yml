@@ -12,7 +12,6 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,17 +27,24 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configure Android SDK
+        run: |
+          export ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          export ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          if [ -d "$ANDROID_HOME/cmdline-tools/latest/bin" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          fi
 
       - name: Install Dependencies & Build Web App
         run: |
-          npm install
+          npm ci || npm install
           npm run build
 
       - name: Generate Native Android Project
         run: |
-          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
+          npm install @capacitor/core @capacitor/cli @capacitor/android --save
           cat << 'EOF' > capacitor.config.json
           {
             "appId": "com.suararakyat.portal",
@@ -89,10 +95,10 @@ jobs:
           PREPARED_APK="${{ steps.prepare_asset.outputs.apk_path }}"
           RELEASE_TAG="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
           RELEASE_TITLE="Debug APK Build #${{ github.run_number }}"
-
           gh release create "$RELEASE_TAG" "$PREPARED_APK" \
             --title "$RELEASE_TITLE" \
             --target "$GITHUB_SHA" \
+            --latest \
             --notes "### Suara Rakyat - Debug APK
           - **Build**: #${{ github.run_number }}
           - **Commit**: \`${{ github.sha }}\`
